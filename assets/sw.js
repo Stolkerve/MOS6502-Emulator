@@ -1,9 +1,9 @@
-var cacheName = 'egui-template-pwa';
+var cacheName = 'mos6502-emulator-pwa';
 var filesToCache = [
   './',
   './index.html',
-  './eframe_template.js',
-  './eframe_template_bg.wasm',
+  './mos6502_emulator.js',
+  './mos6502_emulator_bg.wasm',
 ];
 
 /* Start the service worker and cache all of the app's content */
