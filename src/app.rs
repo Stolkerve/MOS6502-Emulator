@@ -4,8 +4,18 @@ use egui::{
 };
 use egui_extras::{Column, TableBuilder};
 use number_prefix::NumberPrefix;
+
+#[cfg(target_arch = "wasm32")]
 use rfd::AsyncFileDialog;
+
+#[cfg(not(target_arch = "wasm32"))]
+use rfd::FileDialog;
+#[cfg(not(target_arch = "wasm32"))]
+use std::io::Read;
+
 use std::{collections::HashMap, ops::RangeInclusive};
+
+use chrono::prelude::*;
 
 use crate::{
     bus::Bus,
@@ -34,7 +44,7 @@ pub struct Mos6502Emulator {
     bus: Bus,
     deassembly: Vec<(usize, String)>,
     frecuency: f64,
-    last_time: std::time::Instant,
+    last_time: DateTime<Utc>,
     is_running: bool,
     mos6502: MOS6502,
     pause: bool,
@@ -51,7 +61,7 @@ impl Default for Mos6502Emulator {
         Self {
             bus: Bus::new(Vec::new()),
             deassembly: Vec::new(),
-            last_time: std::time::Instant::now(),
+            last_time: Utc::now(),
             is_running: false,
             mos6502: MOS6502::new(),
             pause: false,
@@ -78,12 +88,25 @@ impl Mos6502Emulator {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+async fn read_file() -> Option<Vec<u8>> {
+    let files = AsyncFileDialog::new()
+        .add_filter("prg", &["PRG", "prg"])
+        .pick_file();
+    if let Some(file_handle) = files.await {
+        return Some(file_handle.read().await);
+    }
+    None
+}
+
 impl eframe::App for Mos6502Emulator {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.is_running {
             ctx.request_repaint();
-            let now = std::time::Instant::now();
-            if now.duration_since(self.last_time).as_secs_f64() >= 1.0 / self.frecuency {
+            let now = Utc::now();
+            if now.signed_duration_since(self.last_time).num_milliseconds() as f64 / 1000.0
+                >= 1.0 / self.frecuency
+            {
                 if !self.pause {
                     self.last_time = now;
                     if let Some(op) = self.mos6502.clock(&mut self.bus) {
@@ -100,25 +123,40 @@ impl eframe::App for Mos6502Emulator {
             .show(ctx, |ui| {
                 ui.with_layout(Layout::left_to_right(egui::Align::TOP), |ui| {
                     if ui.button(RichText::new("Load ROM").size(16.0)).clicked() {
-                        let files = AsyncFileDialog::new()
-                            .add_filter("prg", &["PRG", "prg"])
-                            .pick_file();
-                        if let Some(file_handle) = async_std::task::block_on(async { files.await })
+                        #[cfg(target_arch = "wasm32")]
                         {
-                            self.bus.rom =
-                                async_std::task::block_on(async { file_handle.read().await });
-                            self.bus.ram.fill(0);
-
-                            self.deassembly = opcodes::deassembly(&mut self.bus);
-
-                            self.last_time = std::time::Instant::now();
-                            self.is_running = true;
-
-                            self.mos6502.reset(&mut self.bus);
-                            self.breakpoint.clear();
-                            self.instruction_index = 0;
-                            self.op_cycles = self.mos6502.cycles;
+                            use pollster::FutureExt as _;
+                            read_file().block_on();
                         }
+
+                        #[cfg(not(target_arch = "wasm32"))]
+                        {
+                            let files = FileDialog::new()
+                                .add_filter("prg", &["PRG", "prg"])
+                                .pick_file();
+                            if let Some(file_path) = files {
+                                if file_path.is_file() {
+                                    if let Ok(mut file) = std::fs::File::open(file_path) {
+                                        let mut data = Vec::<u8>::new();
+                                        if let Ok(_) = file.read_to_end(&mut data) {
+                                            self.bus.rom = data;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        self.bus.ram.fill(0);
+
+                        self.deassembly = opcodes::deassembly(&mut self.bus);
+
+                        self.last_time = Utc::now();
+                        self.is_running = true;
+
+                        self.mos6502.reset(&mut self.bus);
+                        self.breakpoint.clear();
+                        self.instruction_index = 0;
+                        self.op_cycles = self.mos6502.cycles;
                     }
 
                     if ui.button(RichText::new("Load sample").size(16.0)).clicked() {
@@ -132,7 +170,7 @@ impl eframe::App for Mos6502Emulator {
 
                         self.deassembly = opcodes::deassembly(&mut self.bus);
 
-                        self.last_time = std::time::Instant::now();
+                        self.last_time = Utc::now();
                         self.is_running = true;
 
                         self.mos6502.reset(&mut self.bus);
@@ -190,7 +228,7 @@ impl eframe::App for Mos6502Emulator {
                                 format!("Clock: {:.1} {}HZ", v, prefix)
                             }
                         };
-                        ui.add(Slider::new(&mut self.frecuency, 1.0..=1000.0).step_by(0.1));
+                        ui.add(Slider::new(&mut self.frecuency, 1.0..=100.0).step_by(1.0));
                         ui.label(result);
 
                         ui.add_space(16.0);

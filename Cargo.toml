@@ -27,6 +27,8 @@ egui_memory_editor = "0.2.9"
 rfd = "0.14.1"
 async-std = "1.12.0"
 number_prefix = "0.4.0"
+pollster = "0.3.0"
+chrono = { version = "0.4.38", features = ["wasmbind"] }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
