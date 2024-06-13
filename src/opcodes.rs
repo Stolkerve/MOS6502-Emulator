@@ -1,5 +1,5 @@
 use crate::{
-    bus::Bus,
+    bus::{Bus, BusDevice},
     mos6502::{AddrModes, Flags, MOS6502, STACK_TOP},
 };
 
@@ -400,7 +400,25 @@ pub fn bpl(mos6502: &mut MOS6502, _: &mut Bus) {
     }
 }
 
-pub fn brk(_: &mut MOS6502, _: &mut Bus) {}
+pub fn brk(mos6502: &mut MOS6502, bus: &mut Bus) {
+    mos6502.set_flag(Flags::I, true);
+
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    mos6502.stack_index = mos6502.stack_index.wrapping_sub(1);
+    mos6502.write(bus, ((mos6502.pc >> 8) & 0x00FF) as u8);
+
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    mos6502.stack_index = mos6502.stack_index.wrapping_sub(1);
+    mos6502.write(bus, (mos6502.pc & 0x00FF) as u8);
+
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    mos6502.stack_index = mos6502.stack_index.wrapping_sub(1);
+    mos6502.write(bus, mos6502.sr);
+
+    let lo = bus.read(0xFFFE, BusDevice::Ram) as u16;
+    let hi = bus.read(0xFFFF, BusDevice::Ram) as u16;
+    mos6502.pc = (hi << 8) | lo;
+}
 
 pub fn bvc(mos6502: &mut MOS6502, _: &mut Bus) {
     if mos6502.get_flag(Flags::V) == 0 {
@@ -619,7 +637,20 @@ pub fn ror(mos6502: &mut MOS6502, bus: &mut Bus) {
     mos6502.write(bus, res);
 }
 
-pub fn rti(_: &mut MOS6502, _: &mut Bus) {}
+pub fn rti(mos6502: &mut MOS6502, bus: &mut Bus) {
+    mos6502.stack_index = mos6502.stack_index.wrapping_add(1);
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    let st = mos6502.fetch(bus);
+    mos6502.sr = st;
+
+    mos6502.stack_index = mos6502.stack_index.wrapping_add(1);
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    let lo = mos6502.fetch(bus) as u16;
+    mos6502.stack_index = mos6502.stack_index.wrapping_add(1);
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    let hi = mos6502.fetch(bus) as u16;
+    mos6502.pc = (hi << 8) | lo;
+}
 
 pub fn rts(mos6502: &mut MOS6502, _: &mut Bus) {
     let lo = STACK_TOP + mos6502.stack_index as u16;

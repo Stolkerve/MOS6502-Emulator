@@ -118,6 +118,12 @@ impl MOS6502 {
         self.fetching_addr = 0;
         self.relative = 0;
         self.cycles = 8;
+
+        let opcode = bus.read(self.pc, BusDevice::Rom);
+        match opcodes::index_opcode(opcode) {
+            Some(op) => self.cycles += op.cycles,
+            _ => {}
+        };
     }
 
     pub fn fetch(&mut self, bus: &mut Bus) -> u8 {
