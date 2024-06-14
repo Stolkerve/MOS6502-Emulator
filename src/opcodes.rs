@@ -532,7 +532,6 @@ pub fn jmp(mos6502: &mut MOS6502, _: &mut Bus) {
 
 pub fn jsr(mos6502: &mut MOS6502, bus: &mut Bus) {
     let subrutine_addr = mos6502.fetching_addr;
-    mos6502.pc = subrutine_addr;
 
     mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
     mos6502.stack_index = mos6502.stack_index.wrapping_sub(1);
@@ -541,6 +540,8 @@ pub fn jsr(mos6502: &mut MOS6502, bus: &mut Bus) {
     mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
     mos6502.stack_index = mos6502.stack_index.wrapping_sub(1);
     mos6502.write(bus, (mos6502.pc & 0x00FF) as u8);
+
+    mos6502.pc = subrutine_addr;
 }
 
 pub fn lda(mos6502: &mut MOS6502, bus: &mut Bus) {
@@ -652,11 +653,13 @@ pub fn rti(mos6502: &mut MOS6502, bus: &mut Bus) {
     mos6502.pc = (hi << 8) | lo;
 }
 
-pub fn rts(mos6502: &mut MOS6502, _: &mut Bus) {
-    let lo = STACK_TOP + mos6502.stack_index as u16;
+pub fn rts(mos6502: &mut MOS6502, bus: &mut Bus) {
     mos6502.stack_index = mos6502.stack_index.wrapping_add(1);
-    let hi = STACK_TOP + mos6502.stack_index as u16;
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    let lo = mos6502.fetch(bus) as u16;
     mos6502.stack_index = mos6502.stack_index.wrapping_add(1);
+    mos6502.fetching_addr = STACK_TOP + mos6502.stack_index as u16;
+    let hi = mos6502.fetch(bus) as u16;
 
     mos6502.pc = (hi << 8) | (lo & 0x00FF);
 }
