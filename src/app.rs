@@ -104,7 +104,10 @@ impl eframe::App for Mos6502Emulator {
         if self.is_running {
             ctx.request_repaint();
             let now = Utc::now();
-            if now.signed_duration_since(self.last_time).num_milliseconds() as f64 / 1000.0 >= 1.0 / self.frecuency && !self.pause {
+            if now.signed_duration_since(self.last_time).num_milliseconds() as f64 / 1000.0
+                >= 1.0 / self.frecuency
+                && !self.pause
+            {
                 self.last_time = now;
                 if let Some(op) = self.mos6502.clock(&mut self.bus) {
                     self.instruction_index =
@@ -134,7 +137,7 @@ impl eframe::App for Mos6502Emulator {
                                 if file_path.is_file() {
                                     if let Ok(mut file) = std::fs::File::open(file_path) {
                                         let mut data = Vec::<u8>::new();
-                                        if let Ok(_) = file.read_to_end(&mut data) {
+                                        if file.read_to_end(&mut data).is_ok() {
                                             self.bus.rom = data;
                                         }
                                     }
@@ -203,7 +206,9 @@ impl eframe::App for Mos6502Emulator {
                     }
 
                     // step up
-                    if ui.button("⏷").clicked() && self.instruction_index < self.deassembly.len() - 1 {
+                    if ui.button("⏷").clicked()
+                        && self.instruction_index < self.deassembly.len() - 1
+                    {
                         self.instruction_index =
                             usize::min(self.instruction_index + 1, self.deassembly.len() - 1);
 

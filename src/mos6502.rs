@@ -126,9 +126,8 @@ impl MOS6502 {
         self.cycles = 8;
 
         let opcode = bus.read(self.pc, BusDevice::Rom);
-        match opcodes::index_opcode(opcode) {
-            Some(op) => self.cycles += op.cycles,
-            _ => {}
+        if let Some(op) = opcodes::index_opcode(opcode) {
+            self.cycles += op.cycles;
         };
     }
 
