@@ -104,16 +104,12 @@ impl eframe::App for Mos6502Emulator {
         if self.is_running {
             ctx.request_repaint();
             let now = Utc::now();
-            if now.signed_duration_since(self.last_time).num_milliseconds() as f64 / 1000.0
-                >= 1.0 / self.frecuency
-            {
-                if !self.pause {
-                    self.last_time = now;
-                    if let Some(op) = self.mos6502.clock(&mut self.bus) {
-                        self.instruction_index =
-                            usize::clamp(self.instruction_index + 1, 0, self.deassembly.len() - 1);
-                        self.op_cycles = op.cycles;
-                    }
+            if now.signed_duration_since(self.last_time).num_milliseconds() as f64 / 1000.0 >= 1.0 / self.frecuency && !self.pause {
+                self.last_time = now;
+                if let Some(op) = self.mos6502.clock(&mut self.bus) {
+                    self.instruction_index =
+                        usize::clamp(self.instruction_index + 1, 0, self.deassembly.len() - 1);
+                    self.op_cycles = op.cycles;
                 }
             }
         }
@@ -207,14 +203,12 @@ impl eframe::App for Mos6502Emulator {
                     }
 
                     // step up
-                    if ui.button("⏷").clicked() {
-                        if self.instruction_index < self.deassembly.len() - 1 {
-                            self.instruction_index =
-                                usize::min(self.instruction_index + 1, self.deassembly.len() - 1);
+                    if ui.button("⏷").clicked() && self.instruction_index < self.deassembly.len() - 1 {
+                        self.instruction_index =
+                            usize::min(self.instruction_index + 1, self.deassembly.len() - 1);
 
-                            self.mos6502.pc =
-                                self.deassembly.get(self.instruction_index).unwrap().0 as u16;
-                        }
+                        self.mos6502.pc =
+                            self.deassembly.get(self.instruction_index).unwrap().0 as u16;
                     }
 
                     ui.add_space(16.0);
@@ -289,7 +283,7 @@ impl eframe::App for Mos6502Emulator {
                                 .clicked()
                             {
                                 self.mos6502
-                                    .set_flag(Flags::N, !(self.mos6502.get_flag(Flags::N) != 0));
+                                    .set_flag(Flags::N, self.mos6502.get_flag(Flags::N) == 0);
                             }
                             ui.add(SelectableLabel::new(
                                 self.mos6502.get_flag(Flags::V) != 0,
@@ -414,7 +408,7 @@ impl eframe::App for Mos6502Emulator {
                                         format!("{:02X}", ram_slice[(row_index * 16) + i]);
                                     asd[offset] = val_str.chars().nth(0).unwrap() as u8;
                                     asd[offset + 1] = val_str.chars().nth(1).unwrap() as u8;
-                                    asd[offset + 2] = ' ' as u8;
+                                    asd[offset + 2] = b' ';
                                     offset += 3;
                                 }
                                 ui.label(std::str::from_utf8(&asd).unwrap());
@@ -478,11 +472,11 @@ impl eframe::App for Mos6502Emulator {
 }
 
 pub fn format_slider_hex<'a>(zeros: u8) -> impl 'a + Fn(f64, RangeInclusive<usize>) -> String {
-    return move |n: f64, _: RangeInclusive<usize>| {
+    move |n: f64, _: RangeInclusive<usize>| {
         let n = n as u16;
         if zeros == 4 {
             return format!("{:#04X}", n);
         }
         format!("{:#06X}", n)
-    };
+    }
 }

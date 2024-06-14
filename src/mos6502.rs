@@ -49,6 +49,12 @@ pub struct MOS6502 {
     pub cycles: u8,         // ciclos de la instruccion
 }
 
+impl Default for MOS6502 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MOS6502 {
     pub fn new() -> Self {
         Self {
@@ -127,11 +133,11 @@ impl MOS6502 {
     }
 
     pub fn fetch(&mut self, bus: &mut Bus) -> u8 {
-        return match self.addressing_modes {
+        match self.addressing_modes {
             AddrModes::ACC => self.ac,
             AddrModes::IMM => bus.read(self.fetching_addr, BusDevice::Rom),
             _ => bus.read(self.fetching_addr, BusDevice::Ram),
-        };
+        }
     }
 
     pub fn write(&mut self, bus: &mut Bus, v: u8) {
@@ -157,7 +163,7 @@ impl MOS6502 {
     }
 
     pub fn imm(&mut self, _: &mut Bus) {
-        self.fetching_addr = self.pc as u16;
+        self.fetching_addr = self.pc;
         self.pc += 1;
     }
 
@@ -205,7 +211,7 @@ impl MOS6502 {
         let hi = bus.read(self.pc, BusDevice::Rom) as u16;
         self.pc += 1;
 
-        self.fetching_addr = (hi << 8) | (lo & 0x00FF) + self.x as u16;
+        self.fetching_addr = (hi << 8) | ((lo & 0x00FF) + self.x as u16);
     }
 
     pub fn aby(&mut self, bus: &mut Bus) {
@@ -214,7 +220,7 @@ impl MOS6502 {
         let hi = bus.read(self.pc, BusDevice::Rom) as u16;
         self.pc += 1;
 
-        self.fetching_addr = (hi << 8) | (lo & 0x00FF) + self.y as u16;
+        self.fetching_addr = (hi << 8) | ((lo & 0x00FF) + self.y as u16);
     }
 
     pub fn ind(&mut self, bus: &mut Bus) {
@@ -227,7 +233,7 @@ impl MOS6502 {
         let lo = bus.read(addrs, BusDevice::Ram) as u16;
         let hi = bus.read(addrs + 1, BusDevice::Ram) as u16;
 
-        self.fetching_addr = (hi << 8) | (lo & 0x00FF) as u16;
+        self.fetching_addr = (hi << 8) | (lo & 0x00FF);
     }
 
     pub fn inx(&mut self, bus: &mut Bus) {
@@ -250,7 +256,7 @@ impl MOS6502 {
         let lo = bus.read(zp_addrs, BusDevice::Ram) as u16;
         let hi = bus.read(zp_addrs + 1, BusDevice::Ram) as u16;
 
-        self.fetching_addr = (hi << 8) | (lo & 0x00FF) + self.y as u16;
+        self.fetching_addr = (hi << 8) | ((lo & 0x00FF) + self.y as u16);
 
         self.pc += 1;
     }

@@ -21,11 +21,11 @@ impl Bus {
     pub fn write(&mut self, v: u8, a: u16) -> u8 {
         let tmp = self.ram[a as usize];
         self.ram[a as usize] = v;
-        return tmp;
+        tmp
     }
 
     pub fn read(&self, a: u16, device: BusDevice) -> u8 {
-        return match device {
+        match device {
             BusDevice::Ram => {
                 if (a as usize) < self.ram.len() {
                     self.ram[a as usize]
@@ -40,6 +40,6 @@ impl Bus {
                     0x00
                 }
             }
-        };
+        }
     }
 }

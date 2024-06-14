@@ -325,15 +325,15 @@ pub fn index_opcode(opcode_index: u8) -> Option<Opcode> {
 
 pub fn adc(mos6502: &mut MOS6502, bus: &mut Bus) {
     let fetched = mos6502.fetch(bus);
-    let (res, o) = mos6502.ac.clone().overflowing_add(fetched);
+    let (res, o) = mos6502.ac.overflowing_add(fetched);
     let (res, o2) = res.overflowing_add(mos6502.get_flag(Flags::C));
 
     mos6502.set_flag(Flags::V, o || o2);
     mos6502.set_flag(Flags::C, fetched as u16 + mos6502.ac as u16 > 0xFF);
-    mos6502.set_flag(Flags::Z, (res & 0xff) == 0);
+    mos6502.set_flag(Flags::Z, res == 0);
     mos6502.set_flag(Flags::N, res & 0x80 != 0);
 
-    mos6502.write(bus, (res & 0xFF) as u8)
+    mos6502.write(bus, res)
 }
 
 pub fn and(mos6502: &mut MOS6502, bus: &mut Bus) {
@@ -482,7 +482,7 @@ pub fn dec(mos6502: &mut MOS6502, bus: &mut Bus) {
     let fetched = mos6502.fetch(bus).wrapping_sub(1);
     mos6502.set_flag(Flags::N, (fetched & 0x80) != 0);
     mos6502.set_flag(Flags::Z, fetched == 0x0);
-    mos6502.write(bus, fetched & 0xff)
+    mos6502.write(bus, fetched)
 }
 
 pub fn dex(mos6502: &mut MOS6502, _: &mut Bus) {
