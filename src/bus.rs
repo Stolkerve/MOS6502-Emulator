@@ -26,7 +26,13 @@ impl Bus {
 
     pub fn read(&self, a: u16, device: BusDevice) -> u8 {
         return match device {
-            BusDevice::Ram => self.ram[a as usize],
+            BusDevice::Ram => {
+                if (a as usize) < self.ram.len() {
+                    self.ram[a as usize]
+                } else {
+                    0x00
+                }
+            }
             BusDevice::Rom => {
                 if (a as usize) < self.rom.len() {
                     self.rom[a as usize]
